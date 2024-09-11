@@ -1,0 +1,76 @@
+import streamlit as st
+import pandas as pd
+import numpy as np
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OrdinalEncoder
+from sklearn.pipeline import Pipeline
+import joblib  # To load the saved models
+
+# Load the trained models and preprocessors
+linear_reg_model = joblib.load('linear_reg_model.pkl')
+descision_tree_model=joblib.load('Descision_tree_model.pkl')
+rf_model = joblib.load('rf_model.pkl')
+preprocessor = joblib.load('preprocessor.pkl')
+
+def transform_func(data):
+      data['sq_zp'] = data['SQUARE FEET'] / data['ZIP OR POSTAL CODE']
+      data['ls_zp'] = data['LOT SIZE'] / data['ZIP OR POSTAL CODE']
+      transformed_data = preprocessor.transform(data)
+      transformed_df=pd.DataFrame(transformed_data,columns=data.columns)
+      return transformed_df.drop(columns=['PRICE'],axis=1)
+
+# Function to make predictions
+def make_predictions(data, model):
+    transformed_data=transform_func(data)
+    predictions = model.predict(transformed_data)
+    return predictions
+
+# Streamlit app
+st.title('Real Estate Price Prediction')
+
+st.write("""
+### Input the property details below:
+""")
+
+# Create input fields for the user to enter data
+property_type = st.selectbox('Property Type', ['Condo/Co-op','Multi-Family (5+ Unit)','Multi-Family (2-4 Unit)','Single Family Residential','Townhouse'])
+city = st.selectbox('city',["Long Island City", "Midwood","New York","Oakland Gardens","Ozone Park","Queens Village","Rosedale","Saint Albans","Staten Island","Staten Island","Wakefield","Whitestone","Woodhaven","Yonkers","Bayside","Bedford-Stuyvesant","Bellerose",
+"Borough Park","Bronx","Brooklyn","Bushwick","Cambria Heights","College Point","Corona","Cypress Hills","Douglaston", "East New York", "Elmhurst","Far Rockaway","Flushing","Forest Hills","Fort Greene","Fresh Meadows","Jamaica","Jamaica Estates","Laurelton"])
+zip_code = st.number_input('ZIP or Postal Code', step=1)
+beds = st.number_input('Beds', step=1)
+baths = st.number_input('Baths', step=1)
+square_feet = st.number_input('Square Feet')
+lot_size = st.number_input('Lot Size')
+year_built = st.number_input('Year Built', step=1)
+days_on_market = st.number_input('Days on Market', step=1)
+
+# Create a DataFrame from the user input
+input_data = pd.DataFrame({
+    'PROPERTY TYPE': [property_type],
+    'CITY': [city],
+    'ZIP OR POSTAL CODE': [zip_code],
+    'BEDS': [beds],
+    'BATHS': [baths],
+    'SQUARE FEET': [square_feet],
+    'LOT SIZE': [lot_size],
+    'YEAR BUILT': [year_built],
+    'DAYS ON MARKET': [days_on_market] ,
+    'PRICE':[0.0]
+})
+
+# Display the user input
+st.write('### User Input:')
+st.write(input_data)
+
+# Make predictions when the user clicks the button
+if st.button('Predict'):
+    linear_reg_predictions = make_predictions(input_data, linear_reg_model)
+    rf_predictions = make_predictions(input_data, rf_model)
+    descision_tree_predictions=make_predictions(input_data, descision_tree_model)
+    st.write('### Predictions:')
+    st.write(f'Linear Regression Prediction: {linear_reg_predictions[0]}')
+    st.write(f'Random Forest Prediction: {rf_predictions[0]}')
+    st.write(f'descision_tree_prediction: {descision_tree_predictions[0]}')
+
